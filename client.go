@@ -1,6 +1,12 @@
 package paprika
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strings"
+)
 
 const baseUrl = "https://www.paprikaapp.com/api/v1/sync/"
 
@@ -97,19 +103,98 @@ type Recipe struct {
 }
 
 type Client struct {
-	username string
-	password string
+	username   string
+	password   string
+	httpClient http.Client
 }
 
-func NewClient(username, password string) Client {
+func NewClient(username, password string) (Client, error) {
+	if strings.TrimSpace(username) == "" {
+		return Client{}, fmt.Errorf("username must not be empty")
+	}
 
+	if strings.TrimSpace(password) == "" {
+		return Client{}, fmt.Errorf("password must not be empty")
+	}
+
+	return Client{
+		httpClient: http.Client{},
+		username:   username,
+		password:   password,
+	}, nil
 }
 
 func (c Client) Recipes() ([]RecipeItem, error) {
+	rs := []RecipeItem{}
+	err := c.get("recipes", &rs)
+	if err != nil {
+		return nil, err
+	}
 
+	return rs, err
 }
 
 func (c Client) Bookmarks() ([]Bookmark, error) {
-
+	return nil, nil
 }
 
+func (c Client) prepareGet(path string) (*http.Request, error) {
+	req, err := http.NewRequest("GET", baseUrl+path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request for %s: %v", path, err)
+	}
+
+	req.Header = http.Header{
+		"Content-Type": []string{"application/json"},
+	}
+	req.SetBasicAuth(c.username, c.password)
+	return req, nil
+}
+
+func (c Client) get(path string, value interface{}) error {
+	req, err := c.prepareGet(path)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to get %s: %s", path, err)
+	}
+
+	defer resp.Body.Close()
+	bodyText, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error reading response body: %s", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %s %s", resp.Status, bodyText)
+	}
+
+	err = unwrapResult(bodyText, value)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func unwrapResult(jsonData []byte, value interface{}) error {
+	var wrapper Result
+
+	err := json.Unmarshal(jsonData, &wrapper)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal result wrapper from %s: %s", string(jsonData), err)
+	}
+	unwrapped, err := wrapper.Result.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("failed to prepare result for unmarshal: %s", err)
+	}
+	err = json.Unmarshal(unwrapped, &value)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal result from %s: %s", string(unwrapped), err)
+	}
+
+	return nil
+}
