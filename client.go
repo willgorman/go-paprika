@@ -134,6 +134,16 @@ func (c Client) Recipes() ([]RecipeItem, error) {
 	return rs, err
 }
 
+func (c Client) Recipe(uid string) (Recipe, error) {
+	r := Recipe{}
+	err := c.get("recipe/"+uid, &r)
+	if err != nil {
+		return Recipe{}, err
+	}
+
+	return r, err
+}
+
 func (c Client) Bookmarks() ([]Bookmark, error) {
 	return nil, nil
 }
