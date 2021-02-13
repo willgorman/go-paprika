@@ -100,6 +100,7 @@ type Recipe struct {
 	PrepTime        string   `json:"prep_time,omitempty"`
 	Servings        string   `json:"servings,omitempty"`
 	NutritionalInfo string   `json:"nutritional_info,omitempty"`
+	Directions      string   `json:"directions,omitempty"`
 }
 
 type Client struct {
