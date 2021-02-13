@@ -84,7 +84,7 @@ type Recipe struct {
 	OnFavorites     bool     `json:"on_favorites,omitempty"`
 	Photo           string   `json:"photo,omitempty"`
 	UID             string   `json:"uid,omitempty"`
-	Scale           int      `json:"scale,omitempty"`
+	Scale           string   `json:"scale,omitempty"`
 	Ingredients     string   `json:"ingredients,omitempty"`
 	Source          string   `json:"source,omitempty"`
 	Hash            string   `json:"hash,omitempty"`
